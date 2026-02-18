@@ -20,7 +20,7 @@ export function LandingPage() {
                 Help
               </span>
             </Link>
-            <Link to="/login">
+            <Link to="/login-/-signup">
               <Button variant="ghost">Log in</Button>
             </Link>
             <Link to="/signup">

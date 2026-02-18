@@ -3,6 +3,7 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { LandingPage } from '@/pages/landing'
 import { LoginPage } from '@/pages/auth/login'
 import { SignupPage } from '@/pages/auth/signup'
+import LoginSignupPage from '@/pages/Login/Signup'
 import { PasswordResetPage } from '@/pages/auth/password-reset'
 import { EmailVerificationPage } from '@/pages/auth/email-verification'
 import { UserProfilePage } from '@/pages/auth/profile'
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/signup', element: <SignupPage /> },
+  { path: '/login-/-signup', element: <LoginSignupPage /> },
   { path: '/password-reset', element: <PasswordResetPage /> },
   { path: '/verify-email', element: <EmailVerificationPage /> },
   { path: '/privacy', element: <PrivacyPolicyPage /> },
