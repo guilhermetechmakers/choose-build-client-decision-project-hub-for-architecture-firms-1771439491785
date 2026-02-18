@@ -1,127 +1,199 @@
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, GanttChart, Filter } from 'lucide-react'
+import { useProjectBoard } from '@/hooks/use-project-board'
+import {
+  PhaseTimeline,
+  MilestoneCards,
+  DecisionCheckpoints,
+  GanttToggle,
+  Filters,
+  ActionBar,
+} from '@/components/project-board-timeline-phases'
+import type { ViewMode } from '@/components/project-board-timeline-phases'
+import type { FilterState } from '@/components/project-board-timeline-phases'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/skeleton'
+import type { PhaseId } from '@/types'
 
-const phases = [
-  { id: 'kickoff', name: 'Kickoff', progress: 100 },
-  { id: 'concept', name: 'Concept', progress: 100 },
-  { id: 'schematic', name: 'Schematic', progress: 80 },
-  { id: 'dd', name: 'DD', progress: 20 },
-  { id: 'permitting', name: 'Permitting', progress: 0 },
-  { id: 'ca', name: 'CA', progress: 0 },
-  { id: 'handover', name: 'Handover', progress: 0 },
-]
+const PHASE_NAMES: Record<PhaseId, string> = {
+  kickoff: 'Kickoff',
+  concept: 'Concept',
+  schematic: 'Schematic',
+  dd: 'DD',
+  permitting: 'Permitting',
+  ca: 'CA',
+  handover: 'Handover',
+}
 
-const milestones = [
-  { id: '1', phaseId: 'schematic', title: 'Floor plan approval', date: '2025-03-01', decisions: 1 },
-  { id: '2', phaseId: 'schematic', title: 'Material palette', date: '2025-03-15', decisions: 2 },
-]
+function getPhaseName(phaseId: PhaseId): string {
+  return PHASE_NAMES[phaseId] ?? phaseId
+}
 
 export function ProjectBoardPage() {
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [filter, setFilter] = useState<FilterState>({
+    actionableOnly: false,
+    overdueOnly: false,
+    approvalsNeededOnly: false,
+  })
+
+  const {
+    project,
+    phases,
+    milestones,
+    checkpoints,
+    projects,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useProjectBoard()
+
+  const projectTitle =
+    'name' in project ? project.name : (project as { title: string }).title
+
+  const filteredMilestones = useMemo(() => {
+    let list = milestones
+    if (filter.actionableOnly) {
+      list = list.filter(
+        (m) => m.status === 'in_progress' || m.status === 'overdue'
+      )
+    }
+    if (filter.overdueOnly) {
+      list = list.filter((m) => m.status === 'overdue')
+    }
+    if (filter.approvalsNeededOnly) {
+      const idsWithPending = new Set(
+        checkpoints.filter((c) => c.status === 'pending').map((c) => c.milestoneId)
+      )
+      list = list.filter((m) => idsWithPending.has(m.id))
+    }
+    return list
+  }, [milestones, checkpoints, filter])
+
+  const filteredCheckpoints = useMemo(() => {
+    let list = checkpoints
+    if (filter.approvalsNeededOnly) {
+      list = list.filter((c) => c.status === 'pending')
+    }
+    return list
+  }, [checkpoints, filter])
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="mt-1 h-5 w-72" />
+          </div>
+        </div>
+        <Skeleton className="h-24 w-full rounded-lg" />
+        <Skeleton className="h-32 w-full rounded-lg" />
+        <div className="grid gap-4 md:grid-cols-2">
+          <Skeleton className="h-64 rounded-lg" />
+          <Skeleton className="h-64 rounded-lg" />
+        </div>
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center">
+          <p className="font-medium text-destructive">
+            Unable to load project board
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {error instanceof Error ? error.message : 'Something went wrong.'}
+          </p>
+          <Button variant="outline" className="mt-4" onClick={() => refetch()}>
+            Try again
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Project timeline</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Project timeline
+          </h1>
           <p className="text-muted-foreground">
             Phases, milestones, and decision checkpoints.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Filter className="h-4 w-4" />
-            Filters
-          </Button>
-          <Button variant="outline" size="sm">
-            <GanttChart className="h-4 w-4" />
-            Gantt view
-          </Button>
-          <Button variant="accent" size="sm" asChild>
-            <Link to="/dashboard/decisions/new">
-              <Plus className="h-4 w-4" />
-              New decision
-            </Link>
-          </Button>
-        </div>
+        <ActionBar
+          onAddMilestone={() => {}}
+          onScheduleMeeting={() => {}}
+        />
       </div>
 
-      {/* Project selector placeholder */}
+      {/* Project selector */}
       <Card>
         <CardContent className="py-4">
           <p className="text-sm text-muted-foreground">
-            Project: <span className="font-medium text-foreground">Riverside Residence</span>
+            Project:{' '}
+            <span className="font-medium text-foreground">{projectTitle}</span>
             {' · '}
-            <Link to="/dashboard/projects" className="text-primary hover:underline">
+            <Link
+              to="/dashboard/projects"
+              className="text-primary hover:underline"
+            >
               Switch project
             </Link>
+            {projects.length > 1 && (
+              <span className="ml-2 text-xs text-muted-foreground">
+                ({projects.length} projects)
+              </span>
+            )}
           </p>
         </CardContent>
       </Card>
 
-      {/* Horizontal phase timeline */}
+      {/* Filters */}
+      <Filters filter={filter} onFilterChange={setFilter} />
+
+      {/* Phase timeline */}
       <Card>
         <CardContent className="p-4 md:p-6">
           <h2 className="mb-4 text-lg font-semibold">Phases</h2>
-          <div className="flex flex-wrap gap-2 md:gap-4">
-            {phases.map((phase) => (
-              <div
-                key={phase.id}
-                className={cn(
-                  'flex flex-1 min-w-[100px] flex-col rounded-lg border border-border p-3 transition-shadow hover:shadow-md',
-                  phase.progress === 100 && 'border-primary/30 bg-primary/5'
-                )}
-              >
-                <span className="text-sm font-medium">{phase.name}</span>
-                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all duration-500"
-                    style={{ width: `${phase.progress}%` }}
-                  />
-                </div>
-                <span className="mt-1 text-xs text-muted-foreground">
-                  {phase.progress}%
-                </span>
-              </div>
-            ))}
-          </div>
+          <PhaseTimeline phases={phases} />
         </CardContent>
       </Card>
 
-      {/* Milestones / decision checkpoints */}
+      {/* Gantt toggle + list/gantt content */}
       <Card>
-        <CardHeader className="pb-2">
-          <h2 className="text-lg font-semibold">Decision checkpoints</h2>
-          <p className="text-sm text-muted-foreground">
-            Milestones linked to decisions. Click to open the decision.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2">
-            {milestones.map((m) => (
-              <li key={m.id}>
-                <Link
-                  to="/dashboard/decisions"
-                  className="flex items-center justify-between rounded-lg border border-border p-3 transition-colors hover:bg-muted/50"
-                >
-                  <div>
-                    <p className="font-medium">{m.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {m.date} · {m.decisions} decision{m.decisions !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                  <Badge variant="secondary">Schematic</Badge>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-4 text-sm text-muted-foreground">
-            Add milestones from the timeline or when creating a decision.
-          </p>
+        <CardContent className="p-4 md:p-6">
+          <h2 className="mb-4 text-lg font-semibold">Schedule</h2>
+          <GanttToggle
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            phases={phases}
+            milestones={filteredMilestones}
+            canReschedule={false}
+          />
+          {viewMode === 'list' && (
+            <div className="mt-6">
+              <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+                Milestones
+              </h3>
+              <MilestoneCards
+                milestones={filteredMilestones}
+                getPhaseName={getPhaseName}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Decision checkpoints */}
+      <DecisionCheckpoints checkpoints={filteredCheckpoints} />
     </div>
   )
 }

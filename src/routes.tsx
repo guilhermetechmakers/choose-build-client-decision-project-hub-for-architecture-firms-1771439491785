@@ -43,6 +43,7 @@ export const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: 'profile', element: <UserProfilePage /> },
       { path: 'projects', element: <ProjectBoardPage /> },
+      { path: 'project-board', element: <ProjectBoardPage /> },
       { path: 'decisions', element: <DecisionLogPage /> },
       { path: 'decisions/new', element: <CreateDecisionPage /> },
       { path: 'messages', element: <MessagesPage /> },
